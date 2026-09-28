@@ -1,11 +1,11 @@
 const { Pool } = require("pg");
 
 const pool = new Pool({
-  host: "shipforge-postgres",
-  port: 5432,
-  user: "shipforge",
-  password: "shipforge_dev_password",
-  database: "shipforge"
+  host: process.env.DB_HOST || "localhost",
+  port: process.env.DB_PORT || 5432,
+  user: process.env.DB_USER || "shipforge",
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME || "shipforge"
 });
 
 pool.on("connect", () => {

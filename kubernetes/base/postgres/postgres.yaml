@@ -5,7 +5,7 @@ metadata:
 type: Opaque
 stringData:
   POSTGRES_USER: shipforge
-  POSTGRES_PASSWORD: shipforge_dev_password
+  POSTGRES_PASSWORD: CHANGE_ME
   POSTGRES_DB: shipforge
 
 ---
