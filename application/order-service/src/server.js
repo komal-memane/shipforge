@@ -6,7 +6,6 @@ const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
 
-// Home endpoint
 app.get("/", (req, res) => {
   res.json({
     service: "ShipForge Order Service",
@@ -15,14 +14,12 @@ app.get("/", (req, res) => {
   });
 });
 
-// Health check
 app.get("/health", (req, res) => {
   res.json({
     status: "healthy"
   });
 });
 
-// Get all orders
 app.get("/orders", async (req, res) => {
   try {
     const result = await pool.query(
@@ -39,7 +36,6 @@ app.get("/orders", async (req, res) => {
   }
 });
 
-// Create an order
 app.post("/orders", async (req, res) => {
   const { product_name, quantity, customer_name } = req.body;
 
@@ -67,7 +63,10 @@ app.post("/orders", async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`ShipForge Order Service running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`ShipForge Order Service running on port ${PORT}`);
+  });
+}
+
+module.exports = app;

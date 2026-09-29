@@ -39,7 +39,10 @@ app.get("/products", async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`ShipForge Product Service running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`ShipForge Product Service running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
