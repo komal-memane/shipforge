@@ -115,23 +115,25 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        sed -i -E "/newName: 289984444209.dkr.ecr.ap-south-1.amazonaws.com\\/shipforge\\/product-service/{n;s/newTag:.*/    newTag: \\"$IMAGE_TAG\\"/;}" \
+                        sed -i "/product-service/{n;s/newTag: .*/    newTag: \\"$IMAGE_TAG\\"/;}" \
                             kubernetes/overlays/dev/kustomization.yaml
 
-                        sed -i -E "/newName: 289984444209.dkr.ecr.ap-south-1.amazonaws.com\\/shipforge\\/order-service/{n;s/newTag:.*/    newTag: \\"$IMAGE_TAG\\"/;}" \
+                        sed -i "/order-service/{n;s/newTag: .*/    newTag: \\"$IMAGE_TAG\\"/;}" \
                             kubernetes/overlays/dev/kustomization.yaml
 
-                        echo "Updated Kustomize image tags to build $IMAGE_TAG"
-
-                        git diff -- kubernetes/overlays/dev/kustomization.yaml
+                        echo "Kustomize configuration after update:"
+                        cat kubernetes/overlays/dev/kustomization.yaml
 
                         git config user.name "shipforge-jenkins"
                         git config user.email "shipforge-jenkins@users.noreply.github.com"
 
                         git add kubernetes/overlays/dev/kustomization.yaml
 
-                        git diff --cached --quiet || \
+                        if git diff --cached --quiet; then
+                            echo "No GitOps manifest changes detected."
+                        else
                             git commit -m "ci: deploy ShipForge build ${IMAGE_TAG}"
+                        fi
 
                         git remote set-url origin \
                             "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/komal-memane/shipforge.git"
