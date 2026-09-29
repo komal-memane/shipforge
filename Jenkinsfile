@@ -20,29 +20,26 @@ pipeline {
         }
 
         stage('Test Product Service') {
-            steps {
-                sh '''
-                    docker run --rm \
-                      -v "$WORKSPACE/application/product-service:/app" \
-                      -w /app \
-                      node:20-alpine \
-                      sh -c "npm ci && npm test"
-                '''
-            }
+    steps {
+        dir('application/product-service') {
+            sh '''
+                npm ci
+                npm test
+            '''
         }
+    }
+}
 
-        stage('Test Order Service') {
-            steps {
-                sh '''
-                    docker run --rm \
-                      -v "$WORKSPACE/application/order-service:/app" \
-                      -w /app \
-                      node:20-alpine \
-                      sh -c "npm ci && npm test"
-                '''
-            }
+stage('Test Order Service') {
+    steps {
+        dir('application/order-service') {
+            sh '''
+                npm ci
+                npm test
+            '''
         }
-
+    }
+}
         stage('Build Docker Images') {
             steps {
                 sh '''
