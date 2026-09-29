@@ -140,11 +140,11 @@ pipeline {
 
                 git push origin HEAD:main
             '''
+                }
+            }
         }
     }
-}}
-    }
-
+    
     post {
         success {
             echo '🚀 ShipForge CI/CD pipeline completed successfully!'
