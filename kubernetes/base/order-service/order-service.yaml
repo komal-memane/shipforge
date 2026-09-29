@@ -4,46 +4,71 @@ metadata:
   name: shipforge-order-service
 spec:
   replicas: 2
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+
   selector:
     matchLabels:
       app: shipforge-order-service
+
   template:
     metadata:
       labels:
         app: shipforge-order-service
+
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: shipforge-order-service
+              topologyKey: kubernetes.io/hostname
+
       containers:
         - name: order-service
           image: shipforge-order-service:1.0
           imagePullPolicy: IfNotPresent
+
           ports:
             - containerPort: 3001
+
           env:
             - name: DB_HOST
               value: shipforge-postgres
+
             - name: DB_PORT
               value: "5432"
+
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
                   name: shipforge-db-secret
                   key: POSTGRES_USER
+
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: shipforge-db-secret
                   key: POSTGRES_PASSWORD
+
             - name: DB_NAME
               valueFrom:
                 secretKeyRef:
                   name: shipforge-db-secret
                   key: POSTGRES_DB
+
           readinessProbe:
             httpGet:
               path: /health
               port: 3001
             initialDelaySeconds: 5
             periodSeconds: 10
+
           livenessProbe:
             httpGet:
               path: /health
@@ -59,7 +84,9 @@ metadata:
 spec:
   selector:
     app: shipforge-order-service
+
   ports:
     - port: 3001
       targetPort: 3001
+
   type: ClusterIP

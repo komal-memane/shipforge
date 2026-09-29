@@ -5,3 +5,4 @@ resources:
   - postgres/postgres.yaml
   - product-service/product-service.yaml
   - order-service/order-service.yaml
+  - ingress.yaml
