@@ -1,3 +1,4 @@
+```groovy
 pipeline {
     agent any
 
@@ -20,26 +21,27 @@ pipeline {
         }
 
         stage('Test Product Service') {
-    steps {
-        dir('application/product-service') {
-            sh '''
-                npm ci
-                npm test
-            '''
+            steps {
+                dir('application/product-service') {
+                    sh '''
+                        npm ci
+                        npm test
+                    '''
+                }
+            }
         }
-    }
-}
 
-stage('Test Order Service') {
-    steps {
-        dir('application/order-service') {
-            sh '''
-                npm ci
-                npm test
-            '''
+        stage('Test Order Service') {
+            steps {
+                dir('application/order-service') {
+                    sh '''
+                        npm ci
+                        npm test
+                    '''
+                }
+            }
         }
-    }
-}
+
         stage('Build Docker Images') {
             steps {
                 sh '''
@@ -103,15 +105,53 @@ stage('Test Order Service') {
                 }
             }
         }
+
+        stage('Update GitOps Manifests') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'github-shipforge',
+                        usernameVariable: 'GITHUB_USERNAME',
+                        passwordVariable: 'GITHUB_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        sed -i -E "/newName: 289984444209.dkr.ecr.ap-south-1.amazonaws.com\\/shipforge\\/product-service/{n;s/newTag:.*/    newTag: \\"$IMAGE_TAG\\"/;}" \
+                            kubernetes/overlays/dev/kustomization.yaml
+
+                        sed -i -E "/newName: 289984444209.dkr.ecr.ap-south-1.amazonaws.com\\/shipforge\\/order-service/{n;s/newTag:.*/    newTag: \\"$IMAGE_TAG\\"/;}" \
+                            kubernetes/overlays/dev/kustomization.yaml
+
+                        echo "Updated Kustomize image tags to build $IMAGE_TAG"
+
+                        git diff -- kubernetes/overlays/dev/kustomization.yaml
+
+                        git config user.name "shipforge-jenkins"
+                        git config user.email "shipforge-jenkins@users.noreply.github.com"
+
+                        git add kubernetes/overlays/dev/kustomization.yaml
+
+                        git diff --cached --quiet || \
+                            git commit -m "ci: deploy ShipForge build ${IMAGE_TAG}"
+
+                        git remote set-url origin \
+                            "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/komal-memane/shipforge.git"
+
+                        git push origin HEAD:main
+                    '''
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo '🚀 ShipForge CI pipeline completed successfully!'
+            echo '🚀 ShipForge CI/CD pipeline completed successfully!'
         }
 
         failure {
-            echo '❌ ShipForge CI pipeline failed. Check the stage logs.'
+            echo '❌ ShipForge CI/CD pipeline failed. Check the stage logs.'
         }
     }
 }
+```
