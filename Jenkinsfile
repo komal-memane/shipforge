@@ -115,11 +115,10 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        sed -i "/product-service/{n;s/newTag: .*/    newTag: \\"$IMAGE_TAG\\"/;}" \
+                        sed -i "/product-service/{n;s/^[[:space:]]*newTag:.*/    newTag: \"$IMAGE_TAG\"/;}" \
                             kubernetes/overlays/dev/kustomization.yaml
 
-                        sed -i "/order-service/{n;s/newTag: .*/    newTag: \\"$IMAGE_TAG\\"/;}" \
-                            kubernetes/overlays/dev/kustomization.yaml
+                       sed -i "/order-service/{n;s/^[[:space:]]*newTag:.*/    newTag: \"$IMAGE_TAG\"/;}" \
 
                         echo "Kustomize configuration after update:"
                         cat kubernetes/overlays/dev/kustomization.yaml
