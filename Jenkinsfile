@@ -12,7 +12,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
@@ -106,16 +105,16 @@ pipeline {
         }
 
         stage('Update GitOps Manifests') {
-    steps {
-        withCredentials([
-            usernamePassword(
-                credentialsId: 'github-shipforge',
-                usernameVariable: 'GITHUB_USERNAME',
-                passwordVariable: 'GITHUB_TOKEN'
-            )
-        ]) {
-            sh '''
-                python3 - <<'PY'
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'github-shipforge',
+                        usernameVariable: 'GITHUB_USERNAME',
+                        passwordVariable: 'GITHUB_TOKEN'
+                    )
+                ]) {
+                    sh '''
+python3 - <<PY
 from pathlib import Path
 
 path = Path("kubernetes/overlays/dev/kustomization.yaml")
@@ -130,7 +129,8 @@ for line in lines:
     elif "name: shipforge-order-service" in line:
         current_service = "order"
     elif current_service and line.strip().startswith("newTag:"):
-        line = line[:len(line) - len(line.lstrip())] + 'newTag: "' + "${IMAGE_TAG}" + '"'
+        indent = line[:len(line) - len(line.lstrip())]
+        line = indent + 'newTag: "${IMAGE_TAG}"'
         current_service = None
 
     output.append(line)
@@ -138,29 +138,30 @@ for line in lines:
 path.write_text("\\n".join(output) + "\\n")
 PY
 
-                echo "Kustomize configuration after update:"
-                cat kubernetes/overlays/dev/kustomization.yaml
+                        echo "Kustomize configuration after update:"
+                        cat kubernetes/overlays/dev/kustomization.yaml
 
-                git config user.name "shipforge-jenkins"
-                git config user.email "shipforge-jenkins@users.noreply.github.com"
+                        git config user.name "shipforge-jenkins"
+                        git config user.email "shipforge-jenkins@users.noreply.github.com"
 
-                git add kubernetes/overlays/dev/kustomization.yaml
+                        git add kubernetes/overlays/dev/kustomization.yaml
 
-                if git diff --cached --quiet; then
-                    echo "No GitOps manifest changes detected."
-                else
-                    git commit -m "ci: deploy ShipForge build ${IMAGE_TAG}"
-                fi
+                        if git diff --cached --quiet; then
+                            echo "No GitOps manifest changes detected."
+                        else
+                            git commit -m "ci: deploy ShipForge build ${IMAGE_TAG}"
+                        fi
 
-                git remote set-url origin \
-                    "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/komal-memane/shipforge.git"
+                        git remote set-url origin \
+                            "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/komal-memane/shipforge.git"
 
-                git push origin HEAD:main
-            '''
+                        git push origin HEAD:main
+                    '''
+                }
+            }
         }
     }
-}
-    
+
     post {
         success {
             echo '🚀 ShipForge CI/CD pipeline completed successfully!'
@@ -171,4 +172,3 @@ PY
         }
     }
 }
-
