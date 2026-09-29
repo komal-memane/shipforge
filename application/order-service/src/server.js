@@ -37,20 +37,20 @@ app.get("/orders", async (req, res) => {
 });
 
 app.post("/orders", async (req, res) => {
-  const { product_name, quantity, customer_name } = req.body;
+  const { product_id, quantity } = req.body;
 
-  if (!product_name || !quantity || !customer_name) {
+  if (!product_id || !quantity) {
     return res.status(400).json({
-      error: "product_name, quantity and customer_name are required"
+      error: "product_id and quantity are required"
     });
   }
 
   try {
     const result = await pool.query(
-      `INSERT INTO orders (product_name, quantity, customer_name)
-       VALUES ($1, $2, $3)
+      `INSERT INTO orders (product_id, quantity)
+       VALUES ($1, $2)
        RETURNING *`,
-      [product_name, quantity, customer_name]
+      [product_id, quantity]
     );
 
     res.status(201).json(result.rows[0]);

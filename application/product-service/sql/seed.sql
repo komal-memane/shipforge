@@ -1,5 +1,5 @@
-INSERT INTO products (name, price, category)
+INSERT INTO products (name, price)
 VALUES
-    ('Laptop', 65000, 'Electronics'),
-    ('Mechanical Keyboard', 4500, 'Accessories'),
-    ('Wireless Mouse', 1200, 'Accessories');
+    ('Laptop', 65000),
+    ('Mechanical Keyboard', 4500),
+    ('Wireless Mouse', 1200);

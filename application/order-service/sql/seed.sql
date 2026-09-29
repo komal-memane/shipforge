@@ -1,4 +1,4 @@
-INSERT INTO orders (product_name, quantity, customer_name)
+INSERT INTO orders (product_id, quantity)
 VALUES
-    ('Laptop', 1, 'Komal'),
-    ('Mechanical Keyboard', 2, 'Rahul');
+    (1, 1),
+    (2, 2);
