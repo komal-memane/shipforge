@@ -115,11 +115,28 @@ pipeline {
             )
         ]) {
             sh '''
-                sed -i "/name: 289984444209.dkr.ecr.ap-south-1.amazonaws.com\\/shipforge\\/product-service/{n;s/newTag:.*/newTag: \\"$IMAGE_TAG\\"/;}" \
-                    kubernetes/overlays/dev/kustomization.yaml
+                python3 - <<'PY'
+from pathlib import Path
 
-                sed -i "/name: 289984444209.dkr.ecr.ap-south-1.amazonaws.com\\/shipforge\\/order-service/{n;s/newTag:.*/newTag: \\"$IMAGE_TAG\\"/;}" \
-                    kubernetes/overlays/dev/kustomization.yaml
+path = Path("kubernetes/overlays/dev/kustomization.yaml")
+lines = path.read_text().splitlines()
+
+current_service = None
+output = []
+
+for line in lines:
+    if "name: shipforge-product-service" in line:
+        current_service = "product"
+    elif "name: shipforge-order-service" in line:
+        current_service = "order"
+    elif current_service and line.strip().startswith("newTag:"):
+        line = line[:len(line) - len(line.lstrip())] + 'newTag: "' + "${IMAGE_TAG}" + '"'
+        current_service = None
+
+    output.append(line)
+
+path.write_text("\\n".join(output) + "\\n")
+PY
 
                 echo "Kustomize configuration after update:"
                 cat kubernetes/overlays/dev/kustomization.yaml
@@ -140,10 +157,9 @@ pipeline {
 
                 git push origin HEAD:main
             '''
-                }
-            }
         }
     }
+}
     
     post {
         success {
