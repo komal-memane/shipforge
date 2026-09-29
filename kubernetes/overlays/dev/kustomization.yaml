@@ -9,8 +9,8 @@ resources:
 images:
   - name: shipforge-product-service
     newName: 289984444209.dkr.ecr.ap-south-1.amazonaws.com/shipforge/product-service
-    newTag: "12"
+    newTag: "13"
 
   - name: shipforge-order-service
     newName: 289984444209.dkr.ecr.ap-south-1.amazonaws.com/shipforge/order-service
-    newTag: "12"
+    newTag: "13"
