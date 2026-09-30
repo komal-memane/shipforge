@@ -6,6 +6,10 @@ ShipForge is a microservices application designed to demonstrate an end-to-end D
 
 ## Architecture
 
+## Architecture
+
+![ShipForge Architecture](architecture/shipforge-architecture.png)
+
 ```text
 Developer
     |
