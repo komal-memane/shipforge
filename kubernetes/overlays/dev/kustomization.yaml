@@ -5,6 +5,8 @@ namespace: default
 
 resources:
   - ../../base
+  - db-secret.yaml
+  - postgres-pvc.yaml
 
 images:
   - name: shipforge-product-service

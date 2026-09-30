@@ -8,3 +8,5 @@ node_modules/
 *.tfstate.*
 *.tfvars
 *.tfvars.json
+
+kubernetes/overlays/dev/db-secret.yaml
