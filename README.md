@@ -1,16 +1,51 @@
 # ShipForge
 
-**Production-style cloud-native DevOps platform built on AWS, Kubernetes, Terraform, CI/CD, GitOps, and observability.**
+**A cloud-native DevOps platform on AWS: Terraform, Jenkins CI/CD, GitOps with Argo CD, Amazon EKS and Prometheus/Grafana monitoring.**
 
-ShipForge is a microservices application designed to demonstrate an end-to-end DevOps workflow from source code to a monitored Kubernetes deployment on AWS.
-
-## Architecture
-
-## Architecture
+ShipForge is a small microservices application built to show a complete DevOps workflow, from a `git push` to a monitored Kubernetes deployment on AWS.
 
 ![ShipForge Architecture](architecture/shipforge-architecture.png)
 
-```text
+---
+
+## Table of Contents
+
+- [Highlights](#highlights)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Services](#services)
+- [CI/CD Pipeline](#cicd-pipeline)
+- [GitOps with Argo CD](#gitops-with-argo-cd)
+- [AWS Infrastructure (Terraform)](#aws-infrastructure-terraform)
+- [Kubernetes](#kubernetes)
+- [Ingress and Load Balancing](#ingress-and-load-balancing)
+- [Security](#security)
+- [Monitoring and Observability](#monitoring-and-observability)
+- [Health Checks and Testing](#health-checks-and-testing)
+- [Deployment Strategy](#deployment-strategy)
+- [Screenshots](#screenshots)
+- [Repository Structure](#repository-structure)
+- [Getting Started](#getting-started)
+- [Cost Note](#cost-note)
+- [Limitations and Next Steps](#limitations-and-next-steps)
+- [Author](#author)
+
+---
+
+## Highlights
+
+- **Infrastructure as Code:** VPC, EKS, ECR, IAM and the AWS Load Balancer Controller are provisioned with Terraform.
+- **Automated CI:** Jenkins installs dependencies, runs tests, builds Docker images, scans them with Trivy and pushes them to Amazon ECR.
+- **GitOps delivery:** Jenkins commits the new image tag to Git and Argo CD syncs the change to the cluster.
+- **Kubernetes on EKS:** two Node.js microservices and PostgreSQL, managed with Kustomize.
+- **Public access through an ALB:** an AWS Application Load Balancer routes `/products` and `/orders` through a Kubernetes Ingress.
+- **Observability:** Prometheus, Grafana, Alertmanager, Node Exporter and kube-state-metrics.
+
+---
+
+## Architecture
+
+```
 Developer
     |
     | git push
@@ -65,49 +100,17 @@ Kubernetes Ingress
   +---- /orders ------> Order Service
 ```
 
-## Services
+---
 
-### Product Service
-
-Node.js/Express microservice responsible for product data.
-
-Endpoints:
-
-* `GET /`
-* `GET /health`
-* `GET /products`
-
-Port: `3000`
-
-### Order Service
-
-Node.js/Express microservice responsible for order data.
-
-Endpoints:
-
-* `GET /`
-* `GET /health`
-* `GET /orders`
-* `POST /orders`
-
-Port: `3001`
-
-### PostgreSQL
-
-PostgreSQL provides persistent application data storage for the microservices.
-
-The database runs inside Kubernetes using a Deployment, ClusterIP Service, PersistentVolumeClaim, and AWS EBS storage.
-
-## Technology Stack
+## Tech Stack
 
 | Area                     | Technology                    |
 | ------------------------ | ----------------------------- |
-| Application              | Node.js                       |
-| API Framework            | Express.js                    |
+| Application              | Node.js, Express.js           |
 | Database                 | PostgreSQL                    |
 | Containers               | Docker                        |
 | Container Registry       | Amazon ECR                    |
-| Cloud                    | AWS                           |
+| Cloud                    | AWS (`ap-south-1`)            |
 | Kubernetes               | Amazon EKS                    |
 | Infrastructure as Code   | Terraform                     |
 | Kubernetes Configuration | Kustomize                     |
@@ -115,223 +118,186 @@ The database runs inside Kubernetes using a Deployment, ClusterIP Service, Persi
 | GitOps                   | Argo CD                       |
 | Load Balancing           | AWS Application Load Balancer |
 | Security Scanning        | Trivy                         |
-| Monitoring               | Prometheus                    |
-| Dashboards               | Grafana                       |
-| Metrics                  | Kubernetes Metrics Server     |
+| Monitoring               | Prometheus, Grafana           |
+| Cluster Metrics          | Kubernetes Metrics Server     |
 | Source Control           | GitHub                        |
+
+---
+
+## Services
+
+### Product Service
+
+Node.js/Express microservice for product data. Runs on port `3000`.
+
+| Method | Endpoint    | Description  |
+| ------ | ----------- | ------------ |
+| GET    | `/`         | Service info |
+| GET    | `/health`   | Health check |
+| GET    | `/products` | List products |
+
+### Order Service
+
+Node.js/Express microservice for order data. Runs on port `3001`.
+
+| Method | Endpoint  | Description  |
+| ------ | --------- | ------------ |
+| GET    | `/`       | Service info |
+| GET    | `/health` | Health check |
+| GET    | `/orders` | List orders  |
+| POST   | `/orders` | Create an order |
+
+### PostgreSQL
+
+Provides persistent storage for the services. It runs inside Kubernetes using a Deployment, a ClusterIP Service, a PersistentVolumeClaim and AWS EBS storage.
+
+---
 
 ## CI/CD Pipeline
 
-Every application change follows an automated pipeline:
+Every application change goes through the Jenkins pipeline defined in the [`Jenkinsfile`](Jenkinsfile).
 
-```text
+```
 Git Push
    |
    v
 Jenkins
    |
    +--> Install dependencies
-   |
    +--> Run tests
-   |
    +--> Build Docker images
-   |
    +--> Trivy vulnerability scan
-   |
    +--> Push images to Amazon ECR
-   |
    +--> Update Kustomize image tags
-   |
    +--> Commit GitOps change
-   |
    +--> Push to GitHub
    |
    v
 Argo CD
    |
    +--> Detect Git change
-   |
    +--> Synchronize Kubernetes manifests
    |
    v
 Amazon EKS
 ```
 
-Docker images are tagged using the Jenkins build number.
+- Images are tagged with the **Jenkins build number**, so every release can be traced to a build.
+- A failed test or a failed security scan stops the pipeline before anything is pushed or deployed.
 
-## GitOps
+---
 
-Argo CD continuously watches the GitHub repository for Kubernetes configuration changes.
+## GitOps with Argo CD
 
-The development overlay is located at:
+Argo CD watches this repository and keeps the cluster in sync with the Kubernetes manifests in Git.
 
-```text
-kubernetes/overlays/dev/
-```
+- Argo CD project and application definitions are in [`argocd/`](argocd).
+- The development overlay is in `kubernetes/overlays/dev/`.
+- Kustomize manages the ECR image names and tags, and Jenkins updates them on each successful build.
 
-Kustomize manages the ECR image names and deployment tags.
+---
 
-Argo CD automatically synchronizes the desired Kubernetes state from Git.
+## AWS Infrastructure (Terraform)
 
-## AWS Infrastructure
+Terraform in [`terraform/`](terraform) manages:
 
-Terraform manages the AWS infrastructure used by ShipForge.
+- Amazon VPC with public and private subnets
+- Internet Gateway and route tables
+- Security groups
+- Amazon EKS cluster and managed node group
+- Amazon ECR repositories
+- IAM roles and policies
+- EBS CSI driver integration
+- AWS Load Balancer Controller
 
-Infrastructure includes:
+Region: `ap-south-1`
 
-* Amazon VPC
-* Public and private subnets
-* Internet Gateway
-* Route tables
-* Security groups
-* Amazon EKS
-* EKS managed node group
-* Amazon ECR repositories
-* IAM roles and policies
-* EBS CSI integration
-* AWS Load Balancer Controller
-
-AWS region:
-
-```text
-ap-south-1
-```
-
-## Amazon EKS
-
-The ShipForge Kubernetes environment runs on Amazon EKS.
-
-The cluster contains:
-
-* Product Service
-* Order Service
-* PostgreSQL
-* Argo CD
-* AWS Load Balancer Controller
-* Metrics Server
-* Prometheus
-* Grafana
-* Node Exporter
-* Kubernetes state metrics
-
-## Amazon ECR
-
-Two private ECR repositories store the application images:
-
-```text
-shipforge/product-service
-shipforge/order-service
-```
-
-Jenkins pushes images to ECR after the tests and security scans pass.
+---
 
 ## Kubernetes
 
-Kubernetes resources are organized using Kustomize.
+The cluster runs:
 
-```text
+- Product Service
+- Order Service
+- PostgreSQL
+- Argo CD
+- AWS Load Balancer Controller
+- Metrics Server
+- Prometheus, Grafana, Node Exporter and kube-state-metrics
+
+Manifests are organized with Kustomize:
+
+```
 kubernetes/
 ├── base/
 │   ├── product-service/
 │   ├── order-service/
 │   ├── postgres/
 │   └── ingress.yaml
-│
 └── overlays/
     └── dev/
         └── kustomization.yaml
 ```
 
-The base contains reusable Kubernetes resources while the development overlay contains environment-specific configuration.
+The `base` folder holds reusable resources and the `dev` overlay holds environment-specific settings.
+
+Two private ECR repositories store the images:
+
+```
+shipforge/product-service
+shipforge/order-service
+```
+
+---
 
 ## Ingress and Load Balancing
 
-The application is exposed through an AWS Application Load Balancer.
+The AWS Load Balancer Controller creates an Application Load Balancer from the Kubernetes Ingress resource.
 
-```text
-Internet
-   |
-   v
-AWS Application Load Balancer
-   |
-   v
-Kubernetes Ingress
-   |
-   +---- /products ----> Product Service :3000
-   |
-   +---- /orders ------> Order Service :3001
-```
+| Path        | Target          | Port   |
+| ----------- | --------------- | ------ |
+| `/products` | Product Service | `3000` |
+| `/orders`   | Order Service   | `3001` |
 
-The AWS Load Balancer Controller manages the ALB from the Kubernetes Ingress resource.
+The services themselves stay as internal `ClusterIP` services.
 
-The application services remain Kubernetes ClusterIP services.
+---
 
 ## Security
 
-ShipForge includes security controls throughout the delivery pipeline.
+**Container security**
+- Trivy scans images for `HIGH` and `CRITICAL` vulnerabilities before they are pushed to ECR.
+- The containers use the `node:24-alpine` base image.
+- Unneeded npm and Corepack components are removed from the final runtime image.
 
-### Container Security
+**Secrets**
+- Database credentials are not hardcoded in the application source code.
+- Kubernetes Secrets pass database configuration to the pods.
 
-Trivy scans Docker images for HIGH and CRITICAL vulnerabilities before images are pushed to ECR.
+**IAM**
+- Dedicated IAM roles are used for EKS, the worker nodes, the EBS CSI driver and the AWS Load Balancer Controller.
+- EKS Pod Identity is used where appropriate.
 
-The application containers use:
-
-```text
-node:24-alpine
-```
-
-Unnecessary npm and Corepack runtime components are removed from the final runtime image.
-
-### Secrets
-
-Database credentials are not hardcoded into application source code.
-
-Kubernetes Secrets provide database configuration to the application pods.
-
-### IAM
-
-AWS workloads use IAM roles and EKS Pod Identity where appropriate.
-
-Dedicated IAM roles are used for components such as:
-
-* EKS
-* Worker nodes
-* EBS CSI
-* AWS Load Balancer Controller
+---
 
 ## Monitoring and Observability
 
-ShipForge uses Prometheus and Grafana for Kubernetes monitoring.
+Prometheus and Grafana monitor the cluster. The monitoring stack includes Prometheus, Grafana, Alertmanager, Node Exporter, kube-state-metrics and the Kubernetes Metrics Server.
 
-Monitoring components include:
+Grafana shows:
 
-* Prometheus
-* Grafana
-* Alertmanager
-* Node Exporter
-* kube-state-metrics
-* Kubernetes Metrics Server
+- Node CPU and memory usage
+- Pod counts
+- Kubernetes resources
+- Container activity
+- Overall cluster metrics
 
-Grafana provides visibility into:
+---
 
-* Node CPU usage
-* Node memory usage
-* Pod counts
-* Kubernetes resources
-* Container activity
-* Cluster metrics
+## Health Checks and Testing
 
-## Health Checks
-
-Both application services expose:
-
-```text
-GET /health
-```
-
-These endpoints are used by Kubernetes for liveness and readiness probes.
-
-Example response:
+Both services expose `GET /health`, which Kubernetes uses for liveness and readiness probes.
 
 ```json
 {
@@ -339,83 +305,69 @@ Example response:
 }
 ```
 
-## Testing
+Tests currently cover the health endpoints of both services and run with `npm test`. Jenkins runs them before building any image.
 
-The services use Node.js testing capabilities.
-
-Tests currently validate the health endpoints of:
-
-* Product Service
-* Order Service
-
-Jenkins executes the tests automatically before Docker images are built.
-
-```bash
-npm test
-```
-
-A failed test stops the CI/CD pipeline before deployment.
+---
 
 ## Deployment Strategy
 
-ShipForge uses Kubernetes rolling updates.
+ShipForge uses Kubernetes rolling updates, with rollout settings sized for the capacity of the development EKS cluster. Readiness and liveness probes keep the app available while pods are replaced.
 
-The deployments are configured with controlled rollout settings to work within the capacity of the development EKS cluster.
-
-```text
-New Image
-    |
-    v
-Amazon ECR
-    |
-    v
-GitOps Tag Update
-    |
-    v
-Argo CD Sync
-    |
-    v
-Kubernetes Rolling Update
-    |
-    v
-New Application Pods
+```
+New Image -> Amazon ECR -> GitOps Tag Update -> Argo CD Sync -> Rolling Update -> New Pods
 ```
 
-Readiness and liveness probes help Kubernetes maintain application availability during updates.
+---
+
+## Screenshots
+
+### Jenkins CI/CD
+
+| Jenkins pipeline | Jenkins pipeline run |
+| --- | --- |
+| ![Jenkins](screenshots/JenkiShip.png) | ![Jenkins run](screenshots/jenship.png) |
+
+### Argo CD (GitOps)
+
+| Argo CD | Argo CD application |
+| --- | --- |
+| ![Argo CD](screenshots/agrocd.png) | ![Argo CD application](screenshots/agroship.png) |
+
+### Amazon ECR and EKS
+
+| Amazon ECR repositories | EKS cluster |
+| --- | --- |
+| ![Amazon ECR](screenshots/ECR.png) | ![EKS cluster](screenshots/cluster-ship.png) |
+
+### Monitoring and kubectl
+
+| Grafana | Grafana dashboard |
+| --- | --- |
+| ![Grafana](screenshots/grafana.png) | ![Grafana dashboard](screenshots/grafanas.png) |
+
+| kubectl output |
+| --- |
+| ![kubectl](screenshots/kubectl-shell.png) |
+
+---
 
 ## Repository Structure
 
-```text
+```
 shipforge/
-│
 ├── application/
 │   ├── product-service/
 │   └── order-service/
-│
 ├── architecture/
-│
 ├── argocd/
 │   ├── application.yaml
 │   └── project.yaml
-│
-├── docker/
-│
-├── docs/
-│
 ├── jenkins/
-│
 ├── kubernetes/
 │   ├── base/
-│   │   ├── product-service/
-│   │   ├── order-service/
-│   │   ├── postgres/
-│   │   └── ingress.yaml
-│   │
 │   └── overlays/
 │       └── dev/
-│
-├── monitoring/
-│
+├── screenshots/
 ├── terraform/
 │   ├── provider.tf
 │   ├── variables.tf
@@ -424,172 +376,78 @@ shipforge/
 │   ├── ecr.tf
 │   ├── lbc.tf
 │   └── outputs.tf
-│
-└── Jenkinsfile
+├── Jenkinsfile
+└── README.md
 ```
 
-## Local Development
+---
+
+## Getting Started
 
 ### Prerequisites
 
-Install:
+Node.js, npm, Docker, Git, AWS CLI, Terraform, kubectl and Helm.
 
-* Node.js
-* npm
-* Docker Desktop
-* Git
-* AWS CLI
-* Terraform
-* kubectl
-* Helm
-
-### Clone Repository
+### Clone
 
 ```bash
 git clone https://github.com/komal-memane/shipforge.git
 cd shipforge
 ```
 
-### Product Service
+### Run a service locally
 
 ```bash
-cd application/product-service
+cd application/product-service   # or application/order-service
 npm install
 npm test
 npm start
 ```
 
-### Order Service
-
-```bash
-cd application/order-service
-npm install
-npm test
-npm start
-```
-
-## Docker
-
-Build the services locally:
+### Build and run with Docker
 
 ```bash
 docker build -t shipforge-product-service:local application/product-service
 docker build -t shipforge-order-service:local application/order-service
-```
 
-Run the product service:
-
-```bash
 docker run --rm -p 3000:3000 shipforge-product-service:local
-```
-
-Run the order service:
-
-```bash
 docker run --rm -p 3001:3001 shipforge-order-service:local
 ```
 
-## Kubernetes Deployment
+### Provision the AWS infrastructure
 
-Render the Kubernetes manifests locally:
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+### Render the Kubernetes manifests
 
 ```bash
 kubectl kustomize kubernetes/overlays/dev
 ```
 
-The actual EKS deployment is managed through Argo CD.
+The actual deployment to EKS is handled by Argo CD, which reads `argocd/project.yaml` and `argocd/application.yaml`.
 
-## Terraform
-
-Terraform manages the AWS infrastructure.
-
-Initialize:
+### Tear everything down
 
 ```bash
 cd terraform
-terraform init
+terraform destroy
 ```
 
-Review changes:
+---
 
-```bash
-terraform plan
-```
+## Cost Note
 
-Apply infrastructure:
+EKS, the node group, the load balancer and EBS volumes all cost money while they run. This project is meant to be created, tested and destroyed. Run `terraform destroy` when you are done, and check that no load balancers or EBS volumes are left behind.
 
-```bash
-terraform apply
-```
+---
 
-## End-to-End Release Flow
+## Limitations
 
-```text
-1. Developer changes application code
-             |
-             v
-2. git push
-             |
-             v
-3. Jenkins starts
-             |
-             v
-4. Tests execute
-             |
-             v
-5. Docker images are built
-             |
-             v
-6. Trivy scans the images
-             |
-             v
-7. Images are pushed to ECR
-             |
-             v
-8. Kustomize image tags are updated
-             |
-             v
-9. GitOps change is pushed to GitHub
-             |
-             v
-10. Argo CD detects the change
-             |
-             v
-11. Argo CD synchronizes EKS
-             |
-             v
-12. Kubernetes performs rolling update
-             |
-             v
-13. ALB routes user traffic
-             |
-             v
-14. Prometheus collects metrics
-             |
-             v
-15. Grafana visualizes the platform
-```
+This is a learning project built to practice the full delivery workflow, so some things are deliberately simple:
 
-## Project Outcomes
-
-ShipForge demonstrates practical implementation of:
-
-* AWS cloud infrastructure with Terraform
-* Containerized microservices
-* Docker image security scanning
-* Amazon ECR
-* Amazon EKS
-* Kubernetes deployments and services
-* PostgreSQL persistent storage
-* AWS Application Load Balancer
-* Jenkins CI/CD
-* GitOps with Argo CD
-* Kustomize
-* Kubernetes health probes
-* Prometheus monitoring
-* Grafana dashboards
-* AWS IAM
-* EKS Pod Identity
-* Infrastructure and application troubleshooting
-
-
+---
